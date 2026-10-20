@@ -1,0 +1,6 @@
+{
+  "name": "VOMS v9.0 - Executive Control Tower",
+  "description": "Vendor Operation Management System - Executive Control Tower with Real-time Visibility, AI-driven Insight, and Human-in-the-Loop Decision support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
