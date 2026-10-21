@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Network, ArrowRight, MapPin } from 'lucide-react';
+import { Network, ArrowRight } from 'lucide-react';
 import { VENDOR_METRICS } from '../data/mockData';
 import { VendorMetric } from '../types';
 
@@ -8,76 +8,94 @@ interface VendorMapCardProps {
 }
 
 export const VendorMapCard: React.FC<VendorMapCardProps> = ({ onSelectVendor }) => {
-  const [selectedVendor, setSelectedVendor] = useState<VendorMetric | null>(null);
+  const [hoveredVendor, setHoveredVendor] = useState<string | null>(null);
 
-  // Vendor pins mapped to coordinates on an SVG map of Vietnam
-  // Map dimensions: 320 x 220
+  // Vendor pins positioned accurately on Vietnam's geography
+  // viewBox: 420 x 260
   const vendorPins = [
     {
       id: 'khv',
       name: 'KHV',
       score: '92%',
-      color: 'bg-emerald-500',
-      textColor: 'text-emerald-700',
-      badgeBg: 'bg-emerald-50 border-emerald-300',
-      x: 145,
-      y: 40,
-      labelPos: 'right',
+      color: '#10b981', // green (92% - on track / high)
+      ringColor: '#d1fae5',
+      labelColor: '#047857',
+      cx: 142,
+      cy: 48,
+      labelX: 156,
+      labelY: 40,
+      labelWidth: 54,
+      labelHeight: 22,
     },
     {
       id: 'dreamtech',
       name: 'DREAM TECH',
       score: '88%',
-      color: 'bg-amber-400',
-      textColor: 'text-amber-700',
-      badgeBg: 'bg-amber-50 border-amber-300',
-      x: 172,
-      y: 52,
-      labelPos: 'right',
+      color: '#f59e0b', // amber (88%)
+      ringColor: '#fef3c7',
+      labelColor: '#b45309',
+      cx: 174,
+      cy: 62,
+      labelX: 188,
+      labelY: 52,
+      labelWidth: 72,
+      labelHeight: 22,
     },
     {
       id: 'hstec',
       name: 'HSTEC',
       score: '96%',
-      color: 'bg-emerald-500',
-      textColor: 'text-emerald-700',
-      badgeBg: 'bg-emerald-50 border-emerald-300',
-      x: 135,
-      y: 72,
-      labelPos: 'right',
+      color: '#10b981', // green (96%)
+      ringColor: '#d1fae5',
+      labelColor: '#047857',
+      cx: 128,
+      cy: 76,
+      labelX: 142,
+      labelY: 66,
+      labelWidth: 58,
+      labelHeight: 22,
     },
     {
       id: 'ktech',
       name: 'KTECH',
       score: '85%',
-      color: 'bg-amber-400',
-      textColor: 'text-amber-700',
-      badgeBg: 'bg-amber-50 border-amber-300',
-      x: 180,
-      y: 105,
-      labelPos: 'right',
+      color: '#eab308', // yellow/amber (85%)
+      ringColor: '#fef9c3',
+      labelColor: '#a16207',
+      cx: 184,
+      cy: 126,
+      labelX: 198,
+      labelY: 116,
+      labelWidth: 56,
+      labelHeight: 22,
     },
     {
       id: 'hojeong_vina',
       name: 'HOJEONG VINA',
       score: '87%',
-      color: 'bg-amber-400',
-      textColor: 'text-amber-700',
-      badgeBg: 'bg-amber-50 border-amber-300',
-      x: 148,
-      y: 165,
-      labelPos: 'right',
+      color: '#f59e0b', // amber (87%)
+      ringColor: '#fef3c7',
+      labelColor: '#b45309',
+      cx: 146,
+      cy: 194,
+      labelX: 158,
+      labelY: 184,
+      labelWidth: 78,
+      labelHeight: 22,
     },
     {
       id: 'hojeongb',
       name: 'HOJEONGB',
       score: '90%',
-      color: 'bg-emerald-500',
-      textColor: 'text-emerald-700',
-      badgeBg: 'bg-emerald-50 border-emerald-300',
-      x: 185,
-      y: 152,
-      labelPos: 'right',
+      color: '#10b981', // green (90%)
+      ringColor: '#d1fae5',
+      labelColor: '#047857',
+      cx: 202,
+      cy: 182,
+      labelX: 214,
+      labelY: 172,
+      labelWidth: 68,
+      labelHeight: 22,
     },
   ];
 
@@ -95,7 +113,7 @@ export const VendorMapCard: React.FC<VendorMapCardProps> = ({ onSelectVendor }) 
         </div>
 
         <button
-          onClick={() => {}}
+          onClick={() => onSelectVendor?.('all')}
           className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
         >
           <span>View Details</span>
@@ -104,89 +122,226 @@ export const VendorMapCard: React.FC<VendorMapCardProps> = ({ onSelectVendor }) 
       </div>
 
       {/* Main Map + Summary Row */}
-      <div className="grid grid-cols-12 gap-2 mt-2 items-center">
-        {/* Map area (9 cols) */}
-        <div className="col-span-9 relative bg-gradient-to-br from-sky-50/70 via-slate-50/50 to-blue-50/60 rounded-lg p-1 border border-slate-200/70 h-48 overflow-hidden select-none">
-          {/* Subtle Map SVG silhouette */}
+      <div className="grid grid-cols-12 gap-2 mt-2 items-center flex-1">
+        {/* Map area (9 cols on desktop) */}
+        <div className="col-span-12 sm:col-span-9 relative bg-gradient-to-br from-[#edf4fa] via-[#f1f6fb] to-[#e8f1f9] rounded-lg p-0.5 border border-slate-200/80 h-52 overflow-hidden select-none shadow-2xs">
+          {/* Authentic Geographic Vietnam Map SVG */}
           <svg
-            viewBox="0 0 280 200"
-            className="w-full h-full object-contain pointer-events-none opacity-40"
+            viewBox="0 0 420 260"
+            className="w-full h-full object-contain"
+            preserveAspectRatio="xMidYMid meet"
           >
-            {/* Ocean Waves / Grid */}
             <defs>
-              <pattern id="grid" width="16" height="16" patternUnits="userSpaceOnUse">
-                <path d="M 16 0 L 0 0 0 16" fill="none" stroke="#cbd5e1" strokeWidth="0.5" />
+              {/* Subtle map ocean grid */}
+              <pattern id="seaGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#dbe7f2" strokeWidth="0.6" />
               </pattern>
+
+              {/* Vietnam territory drop shadow */}
+              <filter id="mapShadow" x="-5%" y="-5%" width="115%" height="115%">
+                <feDropShadow dx="1.5" dy="2" stdDeviation="2.5" floodColor="#0f172a" floodOpacity="0.12" />
+              </filter>
             </defs>
-            <rect width="280" height="200" fill="url(#grid)" opacity="0.3" />
 
-            {/* Stylized Vietnam / Indochina Coastline */}
+            {/* Sea Grid Background */}
+            <rect width="420" height="260" fill="url(#seaGrid)" />
+
+            {/* Neighboring Landmass (Laos, Cambodia, southern China) */}
             <path
-              d="M 60,10 Q 110,15 150,25 Q 180,35 160,50 Q 140,65 170,85 Q 200,105 180,130 Q 160,155 175,185 Q 160,195 130,190 Q 110,170 120,150 Q 100,120 70,100 Z"
+              d="M 20,5 Q 60,8 100,6 L 140,8 L 135,26 L 102,28 L 78,56 L 68,90 L 80,126 L 98,154 L 118,172 L 110,198 L 88,212 L 60,205 L 42,168 L 32,120 L 22,60 Z"
               fill="#e2e8f0"
-              stroke="#94a3b8"
-              strokeWidth="1.2"
-              strokeDasharray="2 2"
+              stroke="#cbd5e1"
+              strokeWidth="0.8"
+              opacity="0.85"
             />
-            {/* South China Sea text watermarked */}
-            <text x="195" y="100" fill="#94a3b8" fontSize="8" fontWeight="600" opacity="0.4" letterSpacing="1">
-              EAST SEA
+
+            {/* Vietnam National Boundary (Authentic S-Shape Geography) */}
+            {/* Starts from North-West (Lai Chau/Lao Cai), North (Ha Giang), North-East (Lang Son, Quang Ninh), down Central Coast, Mekong Delta, and Western Borders */}
+            <path
+              filter="url(#mapShadow)"
+              d="M 68,34 
+                 C 82,22 108,12 128,14 
+                 C 142,15 156,22 170,24 
+                 C 184,26 195,36 196,48 
+                 C 192,56 182,58 174,62 
+                 C 166,66 160,74 158,84 
+                 C 156,96 164,106 172,116 
+                 C 180,126 192,132 196,142 
+                 C 202,154 198,168 186,180 
+                 C 176,190 162,198 152,208 
+                 C 144,216 136,228 126,236 
+                 C 118,242 106,244 100,238 
+                 C 94,232 98,222 104,214 
+                 C 110,206 116,196 122,188 
+                 C 126,182 120,174 116,168 
+                 C 112,162 108,154 106,144 
+                 C 104,134 94,124 90,114 
+                 C 86,104 80,94 76,82 
+                 C 72,70 66,56 64,44 Z"
+              fill="#ffffff"
+              stroke="#475569"
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+            />
+
+            {/* Gulf of Tonkin Watermark */}
+            <text x="194" y="80" fill="#94a3b8" fontSize="7.5" fontWeight="600" opacity="0.6" letterSpacing="0.8">
+              VỊNH BẮC BỘ
             </text>
+
+            {/* East Sea / Biển Đông Watermark */}
+            <text x="210" y="145" fill="#64748b" fontSize="8.5" fontWeight="700" opacity="0.5" letterSpacing="1.2">
+              EAST SEA (BIỂN ĐÔNG)
+            </text>
+
+            {/* Gulf of Thailand Watermark */}
+            <text x="44" y="235" fill="#94a3b8" fontSize="7" fontWeight="600" opacity="0.55" letterSpacing="0.5">
+              VỊNH THÁI LAN
+            </text>
+
+            {/* Islands: Phu Quoc & Con Dao */}
+            <ellipse cx="86" cy="224" rx="4" ry="7" fill="#ffffff" stroke="#475569" strokeWidth="1" />
+            <ellipse cx="140" cy="242" rx="3" ry="2" fill="#ffffff" stroke="#475569" strokeWidth="0.8" />
+
+            {/* Paracel Islands (Quần đảo Hoàng Sa) representation */}
+            <g opacity="0.65">
+              <circle cx="280" cy="112" r="1.5" fill="#64748b" />
+              <circle cx="288" cy="118" r="1.5" fill="#64748b" />
+              <circle cx="276" cy="122" r="1.5" fill="#64748b" />
+              <text x="264" y="132" fill="#94a3b8" fontSize="6.5" fontWeight="600">Q.Đ Hoàng Sa</text>
+            </g>
+
+            {/* Spratly Islands (Quần đảo Trường Sa) representation */}
+            <g opacity="0.65">
+              <circle cx="272" cy="198" r="1.5" fill="#64748b" />
+              <circle cx="282" cy="204" r="1.5" fill="#64748b" />
+              <circle cx="290" cy="216" r="1.5" fill="#64748b" />
+              <text x="268" y="226" fill="#94a3b8" fontSize="6.5" fontWeight="600">Q.Đ Trường Sa</text>
+            </g>
+
+            {/* Legend (Top-Right of Map) matching original design */}
+            <g transform="translate(295, 12)">
+              <rect
+                x="0"
+                y="0"
+                width="112"
+                height="62"
+                rx="6"
+                fill="#ffffff"
+                fillOpacity="0.94"
+                stroke="#cbd5e1"
+                strokeWidth="1"
+              />
+              {/* Legend Items */}
+              <circle cx="16" cy="14" r="4.5" fill="#10b981" />
+              <text x="28" y="17" fill="#334155" fontSize="9.5" fontWeight="600">≥ 95%</text>
+
+              <circle cx="16" cy="28" r="4.5" fill="#84cc16" />
+              <text x="28" y="31" fill="#334155" fontSize="9.5" fontWeight="600">90 – 95%</text>
+
+              <circle cx="16" cy="42" r="4.5" fill="#f59e0b" />
+              <text x="28" y="45" fill="#334155" fontSize="9.5" fontWeight="600">85 – 90%</text>
+
+              <circle cx="16" cy="54" r="4.5" fill="#ef4444" />
+              <text x="28" y="57" fill="#334155" fontSize="9.5" fontWeight="600">&lt; 85%</text>
+            </g>
+
+            {/* Vendor Pins & Labels (Rendered inside SVG for 100% stable positioning across all viewports) */}
+            {vendorPins.map((pin) => {
+              const isHovered = hoveredVendor === pin.id;
+
+              return (
+                <g
+                  key={pin.id}
+                  className="cursor-pointer transition-all duration-200"
+                  onMouseEnter={() => setHoveredVendor(pin.id)}
+                  onMouseLeave={() => setHoveredVendor(null)}
+                  onClick={() => onSelectVendor?.(pin.id)}
+                >
+                  {/* Outer pulse wave */}
+                  <circle
+                    cx={pin.cx}
+                    cy={pin.cy}
+                    r={isHovered ? 11 : 7}
+                    fill={pin.ringColor}
+                    opacity="0.85"
+                  />
+
+                  {/* Pin Circle */}
+                  <circle
+                    cx={pin.cx}
+                    cy={pin.cy}
+                    r={isHovered ? 5.5 : 4.5}
+                    fill={pin.color}
+                    stroke="#ffffff"
+                    strokeWidth="1.8"
+                  />
+
+                  {/* Connecting indicator line to label */}
+                  <line
+                    x1={pin.cx}
+                    y1={pin.cy}
+                    x2={pin.labelX}
+                    y2={pin.labelY + pin.labelHeight / 2}
+                    stroke={pin.color}
+                    strokeWidth="1.2"
+                    strokeDasharray="1.5 1.5"
+                    opacity="0.75"
+                  />
+
+                  {/* Vendor Label Card */}
+                  <g transform={`translate(${pin.labelX}, ${pin.labelY})`}>
+                    {/* Badge Background */}
+                    <rect
+                      x="0"
+                      y="0"
+                      width={pin.labelWidth}
+                      height={pin.labelHeight}
+                      rx="4"
+                      fill="#ffffff"
+                      fillOpacity="0.96"
+                      stroke={pin.color}
+                      strokeWidth={isHovered ? 1.6 : 1}
+                      filter="drop-shadow(0 1px 2px rgba(0,0,0,0.08))"
+                    />
+
+                    {/* Vendor Name */}
+                    <text
+                      x="6"
+                      y="11"
+                      fill="#0f172a"
+                      fontSize="8"
+                      fontWeight="800"
+                      letterSpacing="0.2"
+                    >
+                      {pin.name}
+                    </text>
+
+                    {/* Score Value */}
+                    <text
+                      x="6"
+                      y="19"
+                      fill={pin.labelColor}
+                      fontSize="7.5"
+                      fontWeight="700"
+                    >
+                      {pin.score}
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
           </svg>
-
-          {/* Map Legend inside map */}
-          <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-xs border border-slate-200 rounded px-2 py-1 text-[9px] font-semibold text-slate-600 shadow-2xs space-y-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>≥ 95%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-lime-500" />
-              <span>90 – 95%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>85 – 90%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span>&lt; 85%</span>
-            </div>
-          </div>
-
-          {/* Interactive Vendor Pins */}
-          {vendorPins.map((pin) => (
-            <div
-              key={pin.id}
-              className="absolute group cursor-pointer transition-transform hover:scale-110"
-              style={{ left: `${(pin.x / 280) * 100}%`, top: `${(pin.y / 200) * 100}%` }}
-              onClick={() => onSelectVendor?.(pin.id)}
-            >
-              {/* Pin indicator */}
-              <div className="flex items-center gap-1">
-                <span className="relative flex h-3 w-3">
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pin.color} opacity-40`} />
-                  <span className={`relative inline-flex rounded-full h-3 w-3 ${pin.color} ring-2 ring-white shadow-xs`} />
-                </span>
-
-                {/* Badge text */}
-                <div className={`px-1.5 py-0.5 rounded border text-[9px] font-bold shadow-2xs flex flex-col leading-none bg-white/95 ${pin.textColor}`}>
-                  <span className="font-extrabold">{pin.name}</span>
-                  <span className="text-[8px] opacity-80">{pin.score}</span>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
 
-        {/* Summary Metrics (3 cols) */}
-        <div className="col-span-3 flex flex-col justify-between h-48 pl-2 border-l border-slate-100">
+        {/* Summary Metrics (3 cols on desktop) */}
+        <div className="col-span-12 sm:col-span-3 flex sm:flex-col justify-between h-auto sm:h-52 pl-0 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-slate-100">
           <div>
             <span className="text-[10px] text-slate-500 font-medium block">Total Vendors</span>
-            <span className="text-xl font-black text-slate-900 leading-tight">6</span>
+            <span className="text-2xl font-black text-slate-900 leading-tight">6</span>
           </div>
 
-          <div className="space-y-2 mt-2">
+          <div className="flex sm:flex-col gap-4 sm:gap-2.5">
             <div>
               <span className="text-[10px] text-slate-500 font-medium block">On Track</span>
               <span className="text-sm font-bold text-emerald-600">3</span>

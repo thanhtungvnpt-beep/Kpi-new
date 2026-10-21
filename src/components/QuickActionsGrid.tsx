@@ -40,10 +40,10 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({ onActionClic
       iconColor: 'text-sky-500 bg-sky-50',
     },
     {
-      id: 'view_quality',
-      label: 'View Quality Report',
+      id: 'manual_qa',
+      label: 'Nhập Liệu Ca (Manual QA)',
       icon: FileSpreadsheet,
-      iconColor: 'text-emerald-600 bg-emerald-50',
+      iconColor: 'text-purple-600 bg-purple-50',
     },
     {
       id: 'contact_vendor',

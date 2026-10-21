@@ -14,8 +14,10 @@ import {
   Share2,
   Lock,
   Settings,
+  Database,
   Bot,
   Sparkles,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { SIDEBAR_ITEMS } from '../data/mockData';
 
@@ -28,6 +30,8 @@ interface SidebarProps {
 
 const iconMap: Record<string, React.ElementType> = {
   Home,
+  Database,
+  FileSpreadsheet,
   Inbox,
   Building2,
   Activity,

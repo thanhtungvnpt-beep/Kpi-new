@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { UserCheck, CheckCheck, Search, X, Download, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { UserCheck, CheckCheck, Search, X, Download, ChevronDown, RefreshCw, History } from 'lucide-react';
 import { APPROVAL_ACTIONS } from '../data/mockData';
 import { ApprovalAction } from '../types';
+import { AuditLogModal } from './AuditLogModal';
 
 interface ActionsApprovalTableProps {
   onOpenApprovalModal?: (item?: ApprovalAction) => void;
@@ -16,6 +17,58 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState<string>(() =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  );
+
+  // Audit Log Modal State
+  const [auditRecord, setAuditRecord] = useState<ApprovalAction | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
+
+  const handleAuditStatusChange = (
+    recordId: number,
+    newStatus: 'Pending' | 'Approved' | 'Rejected',
+    reason: string
+  ) => {
+    setActions((prev) =>
+      prev.map((a) =>
+        a.id === recordId
+          ? {
+              ...a,
+              status: newStatus,
+              approved: newStatus === 'Approved',
+            }
+          : a
+      )
+    );
+  };
+
+
+  // Polling data refresh function
+  const refreshData = useCallback(() => {
+    setIsRefreshing(true);
+    // Simulate server/GMES polling latency
+    setTimeout(() => {
+      setActions((prev) =>
+        prev.map((item) => ({ ...item }))
+      );
+      setLastSyncedTime(
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
+      setIsRefreshing(false);
+    }, 450);
+  }, []);
+
+  // Set up 60-second polling interval
+  useEffect(() => {
+    const POLLING_INTERVAL_MS = 60 * 1000; // 60 seconds
+    const timer = setInterval(() => {
+      refreshData();
+    }, POLLING_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [refreshData]);
 
   // Filter actions by status and search query (description, ID, type, requester, priority)
   const filteredActions = actions.filter((a) => {
@@ -79,13 +132,14 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
     if (filteredActions.length === 0) return;
 
     // Headers & Rows with quotation escaping
-    const headers = ['ID', 'Type', 'Description', 'Requested By', 'Priority', 'Date', 'Status'];
+    const headers = ['ID', 'Type', 'Description', 'Requested By', 'Priority', 'Pending Hours', 'Date', 'Status'];
     const rows = filteredActions.map((a) => [
       a.id.toString(),
       `"${a.type.replace(/"/g, '""')}"`,
       `"${a.description.replace(/"/g, '""')}"`,
       `"${a.requestedBy.replace(/"/g, '""')}"`,
       `"${a.priority || 'Medium'}"`,
+      `"${a.pendingHours ? `${a.pendingHours}h` : '0h'}"`,
       `"${a.date.replace(/"/g, '""')}"`,
       a.status || (a.approved ? 'Approved' : 'Pending'),
     ]);
@@ -158,6 +212,96 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
     }
   };
 
+  // Sparkline chart & trend indicator for visualizing pending duration
+  const renderPendingAgeSparkline = (
+    hours: number = 4,
+    trend: number[] = [1, 2, 3, 4],
+    status: string = 'Pending'
+  ) => {
+    const isApproved = status === 'Approved';
+    const isRejected = status === 'Rejected';
+
+    // Urgency coloring based on duration
+    const strokeColor = isApproved
+      ? '#10b981'
+      : isRejected
+      ? '#94a3b8'
+      : hours > 36
+      ? '#ef4444'
+      : hours > 12
+      ? '#f59e0b'
+      : '#0284c7';
+
+    const textColor = isApproved
+      ? 'text-emerald-700'
+      : isRejected
+      ? 'text-slate-400'
+      : hours > 36
+      ? 'text-rose-600 font-bold'
+      : hours > 12
+      ? 'text-amber-600 font-semibold'
+      : 'text-sky-700 font-medium';
+
+    const width = 36;
+    const height = 13;
+    const padding = 2;
+
+    const maxVal = Math.max(...trend, hours, 1);
+    const minVal = Math.min(...trend, 0);
+    const range = maxVal - minVal || 1;
+
+    const points = trend.map((val, idx) => {
+      const x = padding + (idx / (trend.length - 1)) * (width - padding * 2);
+      const y = height - padding - ((val - minVal) / range) * (height - padding * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+
+    const polylineStr = points.join(' ');
+    const lastPoint = points[points.length - 1]?.split(',');
+
+    return (
+      <div
+        className="inline-flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-slate-100/80 transition-colors cursor-help"
+        title={`Pending duration: ${hours}h (${(hours / 24).toFixed(1)} days). Escalation trend over time.`}
+      >
+        {/* Mini SVG Sparkline */}
+        <svg width={width} height={height} className="overflow-visible shrink-0">
+          <line
+            x1={padding}
+            y1={height - padding}
+            x2={width - padding}
+            y2={height - padding}
+            stroke="#e2e8f0"
+            strokeWidth="1"
+            strokeDasharray="2 2"
+          />
+          <polyline
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            points={polylineStr}
+          />
+          {lastPoint && (
+            <circle
+              cx={lastPoint[0]}
+              cy={lastPoint[1]}
+              r="2"
+              fill={strokeColor}
+              className={!isApproved && !isRejected ? 'animate-pulse' : ''}
+            />
+          )}
+        </svg>
+
+        {/* Duration text */}
+        <span className={`text-[10px] font-mono tabular-nums leading-none ${textColor}`}>
+          {hours}h
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs flex flex-col justify-between h-full">
       {/* Header */}
@@ -176,8 +320,26 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
           </div>
         </div>
 
-        {/* Right Header Controls: Export to CSV + Batch Approve + View All */}
+        {/* Right Header Controls: Polling Refresh + Export to CSV + Batch Approve + View All */}
         <div className="flex items-center gap-1.5">
+          {/* 60s Polling Indicator & Manual Refresh Button */}
+          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-1.5 py-0.5 rounded-md text-[10px] text-slate-500">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${isRefreshing ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`}
+              title="Polling active every 60s"
+            />
+            <span className="hidden xl:inline text-slate-400">Sync 60s</span>
+            <button
+              type="button"
+              onClick={refreshData}
+              disabled={isRefreshing}
+              className="p-0.5 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
+              title={`Last synced: ${lastSyncedTime} (Auto-refreshes every 60s). Click to refresh now.`}
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`} />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handleExportCSV}
@@ -283,14 +445,16 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
               <th className="py-1.5 px-1.5">Description</th>
               <th className="py-1.5 px-1">Requested By</th>
               <th className="py-1.5 px-1 text-center">Priority</th>
+              <th className="py-1.5 px-1 text-center">Pending Age</th>
               <th className="py-1.5 px-1 text-center">Status</th>
+              <th className="py-1.5 px-1 text-center">Audit</th>
               <th className="py-1.5 px-1.5 text-right">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs">
             {filteredActions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-6 text-center text-slate-400 text-xs">
+                <td colSpan={10} className="py-6 text-center text-slate-400 text-xs">
                   <p>
                     No approval requests found matching{' '}
                     {statusFilter !== 'All' ? `status "${statusFilter}"` : ''}{' '}
@@ -358,8 +522,40 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
                     <td className="py-2 px-1 text-center whitespace-nowrap">
                       {renderPriorityBadge(item.priority)}
                     </td>
+                    {/* Pending Age Sparkline Column */}
                     <td className="py-2 px-1 text-center whitespace-nowrap">
+                      {renderPendingAgeSparkline(
+                        item.pendingHours ?? 4,
+                        item.pendingTrend ?? [1, 2, 3, 4],
+                        currentStatus
+                      )}
+                    </td>
+                    <td
+                      className="py-2 px-1 text-center whitespace-nowrap"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAuditRecord(item);
+                        setIsAuditModalOpen(true);
+                      }}
+                      title="Bấm để xem lịch sử chuyển dịch trạng thái & kiểm toán"
+                    >
                       {renderStatusBadge(item.status, item.approved)}
+                    </td>
+                    {/* Audit Trail Button */}
+                    <td
+                      className="py-2 px-1 text-center whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => {
+                          setAuditRecord(item);
+                          setIsAuditModalOpen(true);
+                        }}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                        title="Xem sổ cái kiểm toán & lịch sử trạng thái (Audit Log)"
+                      >
+                        <History className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                     <td className="py-2 px-1.5 text-slate-500 text-[11px] text-right tabular-nums whitespace-nowrap">
                       {item.date}
@@ -371,6 +567,18 @@ export const ActionsApprovalTable: React.FC<ActionsApprovalTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Enterprise Compliance Audit Log Modal */}
+      <AuditLogModal
+        isOpen={isAuditModalOpen}
+        record={auditRecord}
+        onClose={() => {
+          setIsAuditModalOpen(false);
+          setAuditRecord(null);
+        }}
+        onStatusChange={handleAuditStatusChange}
+      />
     </div>
   );
 };
+

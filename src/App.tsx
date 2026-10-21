@@ -6,6 +6,7 @@ import { KPICardsRow } from './components/KPICardsRow';
 import { ProductionChartCard } from './components/ProductionChartCard';
 import { VendorMapCard } from './components/VendorMapCard';
 import { AIExecutiveInsightCard } from './components/AIExecutiveInsightCard';
+import { AIPredictiveAlertsCard } from './components/AIPredictiveAlertsCard';
 import { KeyMetricsVendorTable } from './components/KeyMetricsVendorTable';
 import { IssueRiskTable } from './components/IssueRiskTable';
 import { ActionsApprovalTable } from './components/ActionsApprovalTable';
@@ -17,12 +18,18 @@ import { AIAssistantDrawer } from './components/AIAssistantDrawer';
 import { QuickActionModal } from './components/QuickActionModal';
 import { ExportModal } from './components/ExportModal';
 import { VendorDetailModal } from './components/VendorDetailModal';
-import { Language, IssueItem, ApprovalAction } from './types';
+import { DataQualityCenter } from './components/DataQualityCenter';
+import { DataHealthStrip } from './components/DataHealthStrip';
+import { ManualDataEntryScreen } from './components/ManualDataEntryScreen';
+import { INITIAL_QUARANTINE_RECORDS } from './data/enterpriseDataQualityData';
+import { Language, IssueItem, ApprovalAction, QuarantineRecord } from './types';
 
 export default function App() {
   const [currentLang, setCurrentLang] = useState<Language>('EN');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSidebarItem, setActiveSidebarItem] = useState('control_tower');
+  const [dataQualityTab, setDataQualityTab] = useState<'overview' | 'quarantine' | 'rules' | 'reconciliation' | 'manual_entry'>('overview');
+  const [quarantineList, setQuarantineList] = useState<QuarantineRecord[]>(INITIAL_QUARANTINE_RECORDS);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Header filter states
@@ -82,85 +89,140 @@ export default function App() {
 
         {/* Main Dashboard Viewport */}
         <main className="flex-1 overflow-y-auto p-3.5 space-y-3 pb-12 transition-all">
-          {/* Executive Control Tower Bar */}
-          <ControlTowerHeader
-            selectedVendor={selectedVendor}
-            onVendorChange={setSelectedVendor}
-            selectedPlant={selectedPlant}
-            onPlantChange={setSelectedPlant}
-            timeRange={timeRange}
-            onTimeRangeChange={setTimeRange}
-            onExport={() => setIsExportModalOpen(true)}
-          />
+          {activeSidebarItem === 'data_quality' ? (
+            <DataQualityCenter
+              onBackToControlTower={() => setActiveSidebarItem('control_tower')}
+              onShowToast={showToast}
+              initialTab={dataQualityTab}
+            />
+          ) : activeSidebarItem === 'manual_entry' ? (
+            <ManualDataEntryScreen
+              onBackToControlTower={() => setActiveSidebarItem('control_tower')}
+              onOpenDataQuality={(tab) => {
+                setDataQualityTab(tab || 'overview');
+                setActiveSidebarItem('data_quality');
+              }}
+              onShowToast={showToast}
+              onAddQuarantineRecord={(rec) => {
+                setQuarantineList((prev) => [rec, ...prev]);
+                INITIAL_QUARANTINE_RECORDS.unshift(rec);
+              }}
+            />
+          ) : (
+            <>
+              {/* Executive Control Tower Bar */}
+              <ControlTowerHeader
+                selectedVendor={selectedVendor}
+                onVendorChange={setSelectedVendor}
+                selectedPlant={selectedPlant}
+                onPlantChange={setSelectedPlant}
+                timeRange={timeRange}
+                onTimeRangeChange={setTimeRange}
+                onExport={() => setIsExportModalOpen(true)}
+                onOpenDataQuality={() => {
+                  setDataQualityTab('overview');
+                  setActiveSidebarItem('data_quality');
+                }}
+              />
 
-          {/* Top 6 KPI Metric Cards */}
-          <KPICardsRow />
+              {/* Enterprise Data Health KPI Strip (Phase 5.2) */}
+              <DataHealthStrip
+                quarantineRecords={quarantineList}
+                onSelectTab={(tab) => {
+                  setDataQualityTab(tab);
+                  setActiveSidebarItem('data_quality');
+                }}
+              />
 
-          {/* Row 2: Production Overview | Vendor Map | AI Executive Insight */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
-            <div className="h-full">
-              <ProductionChartCard />
-            </div>
-            <div className="h-full">
-              <VendorMapCard onSelectVendor={(id) => setSelectedVendorModal(id)} />
-            </div>
-            <div className="h-full">
-              <AIExecutiveInsightCard
-                onOpenAllInsights={() => setIsAIAssistantOpen(true)}
-                onApplySuggestion={(act) => handleApplyAction(act)}
+              {/* Top 6 KPI Metric Cards with Provenance & Lineage */}
+              <KPICardsRow
+                onOpenDataQuality={() => {
+                  setDataQualityTab('overview');
+                  setActiveSidebarItem('data_quality');
+                }}
               />
-            </div>
-          </div>
 
-          {/* Row 3: Key Metrics by Vendor | Issue & Risk Summary | Actions Requiring Approval */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
-            <div className="h-full">
-              <KeyMetricsVendorTable
-                onSelectVendor={(id) => setSelectedVendorModal(id)}
-              />
-            </div>
-            <div className="h-full">
-              <IssueRiskTable
-                onOpenIssueModal={(issue) =>
-                  setActiveQuickAction(issue ? `Issue #${issue.id}: ${issue.issue}` : 'Create Issue')
-                }
-              />
-            </div>
-            <div className="h-full">
-              <ActionsApprovalTable
-                onOpenApprovalModal={(act) =>
-                  setActiveQuickAction(act ? `Approve #${act.id}: ${act.description}` : 'Request Approval')
-                }
-                onBatchApprove={(count) =>
-                  showToast(`Đã duyệt đồng loạt ${count} yêu cầu thành công!`)
-                }
-              />
-            </div>
-          </div>
+              {/* Row 2: Production Overview | Vendor Map | AI Executive Insight | AI Predictive Alerts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-stretch">
+                <div className="h-full">
+                  <ProductionChartCard />
+                </div>
+                <div className="h-full">
+                  <VendorMapCard onSelectVendor={(id) => setSelectedVendorModal(id)} />
+                </div>
+                <div className="h-full">
+                  <AIExecutiveInsightCard
+                    onOpenAllInsights={() => setIsAIAssistantOpen(true)}
+                    onApplySuggestion={(act) => handleApplyAction(act)}
+                  />
+                </div>
+                <div className="h-full">
+                  <AIPredictiveAlertsCard
+                    onApplyAction={(act) => handleApplyAction(act)}
+                    onSelectVendor={(vendorId) => setSelectedVendorModal(vendorId)}
+                    onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
+                  />
+                </div>
+              </div>
 
-          {/* Row 4: Plant Live Status | Upcoming Milestones | Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-            {/* Plant Live Status (Images + Key Info) - spans 5 cols */}
-            <div className="lg:col-span-5 h-full">
-              <PlantLiveStatusGrid
-                onSelectPlant={(plantId) => setSelectedVendorModal(plantId)}
-              />
-            </div>
+              {/* Row 3: Key Metrics by Vendor | Issue & Risk Summary | Actions Requiring Approval */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
+                <div className="h-full">
+                  <KeyMetricsVendorTable
+                    onSelectVendor={(id) => setSelectedVendorModal(id)}
+                  />
+                </div>
+                <div className="h-full">
+                  <IssueRiskTable
+                    onOpenIssueModal={(issue) =>
+                      setActiveQuickAction(issue ? `Issue #${issue.id}: ${issue.issue}` : 'Create Issue')
+                    }
+                  />
+                </div>
+                <div className="h-full">
+                  <ActionsApprovalTable
+                    onOpenApprovalModal={(act) =>
+                      setActiveQuickAction(act ? `Approve #${act.id}: ${act.description}` : 'Request Approval')
+                    }
+                    onBatchApprove={(count) =>
+                      showToast(`Đã duyệt đồng loạt ${count} yêu cầu thành công!`)
+                    }
+                  />
+                </div>
+              </div>
 
-            {/* Upcoming Milestones - spans 4 cols */}
-            <div className="lg:col-span-4 h-full">
-              <UpcomingMilestonesTable
-                onOpenMilestoneModal={() => showToast('Mở danh sách toàn bộ các mốc tiến độ dự án')}
-              />
-            </div>
+              {/* Row 4: Plant Live Status | Upcoming Milestones | Quick Actions */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+                {/* Plant Live Status (Images + Key Info) - spans 5 cols */}
+                <div className="lg:col-span-5 h-full">
+                  <PlantLiveStatusGrid
+                    onSelectPlant={(plantId) => setSelectedVendorModal(plantId)}
+                  />
+                </div>
 
-            {/* Quick Actions - spans 3 cols */}
-            <div className="lg:col-span-3 h-full">
-              <QuickActionsGrid
-                onActionClick={(actionName) => setActiveQuickAction(actionName)}
-              />
-            </div>
-          </div>
+                {/* Upcoming Milestones - spans 4 cols */}
+                <div className="lg:col-span-4 h-full">
+                  <UpcomingMilestonesTable
+                    onOpenMilestoneModal={() => showToast('Mở danh sách toàn bộ các mốc tiến độ dự án')}
+                  />
+                </div>
+
+                {/* Quick Actions - spans 3 cols */}
+                <div className="lg:col-span-3 h-full">
+                  <QuickActionsGrid
+                    onActionClick={(actionName) => {
+                      if (actionName.includes('Manual QA') || actionName.includes('Nhập Liệu')) {
+                        setActiveSidebarItem('manual_entry');
+                        showToast('Đã mở Màn hình Nhập Liệu Thủ Công & Nạp Tệp KPI');
+                      } else {
+                        setActiveQuickAction(actionName);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </main>
       </div>
 
